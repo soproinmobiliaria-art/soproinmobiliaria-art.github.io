@@ -25,7 +25,7 @@ function log(x){const s=typeof x==='string'?x:JSON.stringify(x);window.__es.push
 window.fbAsyncInit=function(){FB.init({appId:APP_ID,autoLogAppEvents:true,xfbml:true,version:'v25.0'});const b=document.getElementById('btn');b.disabled=false;b.textContent='Conectar WhatsApp de '+ASESOR;log('SDK listo (app '+APP_ID+', config '+CONFIG_ID+')');};
 window.addEventListener('message',(e)=>{if(!/facebook\.com$/.test(e.origin))return;try{const d=JSON.parse(e.data);if(d.type==='WA_EMBEDDED_SIGNUP'){log({evento:d.event,data:d.data,version:d.version});if(d.event==='FINISH'||d.event==='FINISH_ONLY_WABA'||d.event==='FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING')document.getElementById('listo').style.display='block';}}catch(_){}});
 document.getElementById('btn').onclick=function(){
-  FB.login(function(r){log({authResponse:r.authResponse?{code:r.authResponse.code?'(código recibido)':null,status:r.status}:null,status:r.status});window.__code=r.authResponse&&r.authResponse.code||null;},
+  FB.login(function(r){const code=r.authResponse&&r.authResponse.code||null;log({authResponse:r.authResponse?{code:code?'(código recibido)':null,status:r.status}:null,status:r.status});window.__code=code;if(code){document.body.setAttribute('data-code',code);log('CODE '+code);}},
   {config_id:CONFIG_ID,response_type:'code',override_default_response_type:true,extras:{setup:{},featureType:'whatsapp_business_app_onboarding',sessionInfoVersion:'3'}});
 };
 </script>
