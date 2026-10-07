@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conectar WhatsApp — Sopro Inmobiliaria</title>
+<meta name="robots" content="noindex">
+<style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0 auto;padding:28px 18px 60px;max-width:720px;color:#1a1a1a;line-height:1.5}h2{margin:0 0 10px}button{font-size:19px;padding:14px 22px;background:#25D366;color:#fff;border:0;border-radius:10px;cursor:pointer;width:100%;max-width:420px}button:disabled{background:#9bd9b2}ol{padding-left:20px}pre{background:#f4f4f4;padding:12px;white-space:pre-wrap;font-size:12px;border-radius:8px}small{color:#666}.ok{background:#e8f7ee;border:1px solid #b7e3c6;border-radius:8px;padding:10px 12px;margin:14px 0;display:none}</style>
+</head><body>
+<h2 id="titulo">Conectar WhatsApp (coexistencia)</h2>
+<p id="instr">Al pulsar el botón se abre la ventana de Meta. Elige el negocio <b id="negocio">Sopro Inmobiliaria</b> y la opción de <b>conectar la app WhatsApp Business que ya usas</b> con el número <b id="tel">663 167 8564</b>. <span id="asesor2">Sebastián</span> recibirá un código en su WhatsApp: hay que teclearlo en la ventana de Meta.</p>
+<button id="btn" disabled>Cargando Meta…</button>
+<div id="listo" class="ok"><b>Listo.</b> Ya puedes cerrar esta página; Sopro termina la conexión del lado del sistema.</div>
+<h3>Registro técnico</h3><pre id="log"></pre>
+<p><small>Sopro Inmobiliaria · Sebastián Campos Rocha · Tecate, B.C. Esta página solo abre la ventana oficial de Meta; no guarda contraseñas ni datos personales.</small></p>
+<script>
+// Página pública (GitHub Pages, https) para el Embedded Signup de coexistencia de WhatsApp. 6-oct-2026.
+// Parámetros por URL: ?app=<APP_ID>&config=<CONFIG_ID>&negocio=<portafolio>&asesor=<nombre>&tel=<número>
+// Sin parámetros = app "Sopro Ads Manager" 968303299269956 (portafolio Alverto, config 2421259691614047).
+// App "Sopro Bot Ventas" (BM Sopro Terrenos): ?app=1817399609268364&config=1493654976019876&negocio=Sopro%20Terrenos
+const Q=new URLSearchParams(location.search);
+const APP_ID=Q.get('app')||'968303299269956', CONFIG_ID=Q.get('config')||'2421259691614047';
+const NEGOCIO=Q.get('negocio')||'Sopro Inmobiliaria', ASESOR=Q.get('asesor')||'Sebastián', TEL=Q.get('tel')||'663 167 8564';
+document.getElementById('titulo').textContent='Conectar el WhatsApp de '+ASESOR+' (coexistencia)';
+document.getElementById('negocio').textContent=NEGOCIO; document.getElementById('tel').textContent=TEL; document.getElementById('asesor2').textContent=ASESOR;
+const logEl=document.getElementById('log'); window.__es=[];
+function log(x){const s=typeof x==='string'?x:JSON.stringify(x);window.__es.push(s);logEl.textContent+=new Date().toLocaleTimeString()+'  '+s+'\n';}
+window.fbAsyncInit=function(){FB.init({appId:APP_ID,autoLogAppEvents:true,xfbml:true,version:'v25.0'});const b=document.getElementById('btn');b.disabled=false;b.textContent='Conectar WhatsApp de '+ASESOR;log('SDK listo (app '+APP_ID+', config '+CONFIG_ID+')');};
+window.addEventListener('message',(e)=>{if(!/facebook\.com$/.test(e.origin))return;try{const d=JSON.parse(e.data);if(d.type==='WA_EMBEDDED_SIGNUP'){log({evento:d.event,data:d.data,version:d.version});if(d.event==='FINISH'||d.event==='FINISH_ONLY_WABA'||d.event==='FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING')document.getElementById('listo').style.display='block';}}catch(_){}});
+document.getElementById('btn').onclick=function(){
+  FB.login(function(r){log({authResponse:r.authResponse?{code:r.authResponse.code?'(código recibido)':null,status:r.status}:null,status:r.status});window.__code=r.authResponse&&r.authResponse.code||null;},
+  {config_id:CONFIG_ID,response_type:'code',override_default_response_type:true,extras:{setup:{},featureType:'whatsapp_business_app_onboarding',sessionInfoVersion:'3'}});
+};
+</script>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_LA/sdk.js"></script>
+</body></html>
