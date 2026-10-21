@@ -15,19 +15,21 @@
 // Parámetros por URL: ?app=<APP_ID>&config=<CONFIG_ID>&negocio=<portafolio>&asesor=<nombre>&tel=<número>
 // Sin parámetros = app "Sopro Ads Manager" 968303299269956 (portafolio Alverto, config 2421259691614047).
 // App "Sopro Bot Ventas" (BM Sopro Terrenos): ?app=1817399609268364&config=1493654976019876&negocio=Sopro%20Terrenos
-// 20-oct-2026: se probó version:'v4' y Meta abrió el flujo NORMAL (número nuevo con SMS), no la coexistencia; por eso se vuelve a la forma documentada para coexistencia (doc embedded-signup/onboarding-business-app-users: featureType whatsapp_business_app_onboarding + sessionInfoVersion 3, sin version).
+// 21-oct-2026: Meta liberó el 20-oct-2026 Embedded Signup v5 (doc embedded-signup/versions): el onboarding de la app WhatsApp Business (coexistencia) viene activado por defecto y basta extras con version v5 (por defecto aquí). ?v=v3 = modo antiguo (featureType whatsapp_business_app_onboarding + sessionInfoVersion 3, sin version). Historial: el 20-oct-2026 version:'v4' abrió el flujo NORMAL (número nuevo con SMS), no la coexistencia.
 const Q=new URLSearchParams(location.search);
 const APP_ID=Q.get('app')||'968303299269956', CONFIG_ID=Q.get('config')||'2421259691614047';
 const NEGOCIO=Q.get('negocio')||'Sopro Inmobiliaria', ASESOR=Q.get('asesor')||'Sebastián', TEL=Q.get('tel')||'663 167 8564';
+const ES_V=(Q.get('v')||'v5');
+const EXTRAS = ES_V==='v3' ? {setup:{},featureType:'whatsapp_business_app_onboarding',sessionInfoVersion:'3'} : {version:'v5'};
 document.getElementById('titulo').textContent='Conectar el WhatsApp de '+ASESOR+' (coexistencia)';
 document.getElementById('negocio').textContent=NEGOCIO; document.getElementById('tel').textContent=TEL; document.getElementById('asesor2').textContent=ASESOR;
 const logEl=document.getElementById('log'); window.__es=[];
 function log(x){const s=typeof x==='string'?x:JSON.stringify(x);window.__es.push(s);logEl.textContent+=new Date().toLocaleTimeString()+'  '+s+'\n';}
-window.fbAsyncInit=function(){FB.init({appId:APP_ID,autoLogAppEvents:true,xfbml:true,version:'v25.0'});const b=document.getElementById('btn');b.disabled=false;b.textContent='Conectar WhatsApp de '+ASESOR;log('SDK listo (app '+APP_ID+', config '+CONFIG_ID+')');};
+window.fbAsyncInit=function(){FB.init({appId:APP_ID,autoLogAppEvents:true,xfbml:true,version:'v25.0'});const b=document.getElementById('btn');b.disabled=false;b.textContent='Conectar WhatsApp de '+ASESOR;log('SDK listo (app '+APP_ID+', config '+CONFIG_ID+', ES '+ES_V+')');};
 window.addEventListener('message',(e)=>{if(!/facebook\.com$/.test(e.origin))return;try{const d=JSON.parse(e.data);if(d.type==='WA_EMBEDDED_SIGNUP'){log({evento:d.event,data:d.data,version:d.version});if(d.event==='FINISH'||d.event==='FINISH_ONLY_WABA'||d.event==='FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING')document.getElementById('listo').style.display='block';}}catch(_){}});
 document.getElementById('btn').onclick=function(){
   FB.login(function(r){const code=r.authResponse&&r.authResponse.code||null;log({authResponse:r.authResponse?{code:code?'(código recibido)':null,status:r.status}:null,status:r.status});window.__code=code;if(code){document.body.setAttribute('data-code',code);log('CODE '+code);}},
-  {config_id:CONFIG_ID,response_type:'code',override_default_response_type:true,extras:{setup:{},featureType:'whatsapp_business_app_onboarding',sessionInfoVersion:'3'}});
+  {config_id:CONFIG_ID,response_type:'code',override_default_response_type:true,extras:EXTRAS});
 };
 </script>
 <script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_LA/sdk.js"></script>
