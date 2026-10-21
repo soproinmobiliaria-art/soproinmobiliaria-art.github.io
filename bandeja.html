@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#075e54">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-EHfwJCQtr+vjq4PfnsQaHSGRWXvzRxUSR0uqR6iJgAM='; style-src 'unsafe-inline'; connect-src https://chcljkuxgeqcbyvhjbcg.supabase.co; img-src data:; base-uri 'none'; form-action 'none'">
+<!-- Bandeja de aprobación del bot de WhatsApp (21-oct-2026). Enlace: bandeja.html#t=<llave>; la llave va en el
+     fragmento (#), que el navegador nunca manda a este servidor. Los datos vienen de la Edge wa-bandeja de Supabase.
+     Fuente: Bot WhatsApp Ventas/sitio/bandeja.html (armada con CSP por hash: si cambias el script, re-armar). -->
+<title>Bandeja</title>
+<style>
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#f0f2f5;font:17px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;color:#111}
+.barra{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));background:#075e54;color:#fff}
+.barra h1{flex:1;font-size:19px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.barra button{font-size:16px;font-weight:600;padding:10px 14px;border-radius:10px;border:0;background:#fff;color:#075e54}
+#aviso{display:none;margin:12px 16px 0;padding:12px 14px;border-radius:12px;font-weight:600}
+#aviso.ok{display:block;background:#d9fdd3;color:#0b5d1e}
+#aviso.mal{display:block;background:#fde2e1;color:#8a1c14}
+main{padding:12px 16px 48px;max-width:640px;margin:0 auto}
+.estado{text-align:center;color:#555;padding:40px 10px}
+</style>
+</head>
+<body>
+<div class="barra"><h1 id="titulo">Bandeja</h1><button id="act" type="button">Actualizar</button></div>
+<div id="aviso" role="status" aria-live="polite"></div>
+<main id="bandeja"><p class="estado">Cargando…</p></main>
+<script>
+(function () {
+  "use strict";
+  var API = "https://chcljkuxgeqcbyvhjbcg.supabase.co/functions/v1/wa-bandeja";
+  var raiz = document.getElementById("bandeja"), aviso = document.getElementById("aviso"), titulo = document.getElementById("titulo");
+  var T = "", ocupado = false, tAviso = 0;
+  function leerLlave() { T = (new URLSearchParams(location.hash.replace(/^#/, ""))).get("t") || ""; }
+  function mostrar(msg, ok) {
+    aviso.textContent = msg; aviso.className = ok ? "ok" : "mal";
+    clearTimeout(tAviso); tAviso = setTimeout(function () { aviso.className = ""; }, ok ? 6000 : 15000);
+  }
+  function estado(msg) { raiz.textContent = ""; var p = document.createElement("p"); p.className = "estado"; p.textContent = msg; raiz.appendChild(p); }
+  async function cargar(manual) {
+    if (!T) { estado("A este enlace le falta la llave. Pide de nuevo el enlace de tu bandeja."); return; }
+    if (ocupado) return;
+    var foco = document.activeElement;
+    if (!manual && foco && foco.tagName === "TEXTAREA") return;   // no recargar mientras escribe
+    try {
+      var r = await fetch(API, { headers: { "x-bandeja-token": T }, cache: "no-store" });
+      if (r.status === 403) { estado("Este enlace no es válido. Pide uno nuevo."); return; }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      var html = await r.text();
+      if (ocupado) return;
+      var editados = {};   // lo que esté corrigiendo se conserva (por id de mensaje)
+      raiz.querySelectorAll("textarea[data-id]").forEach(function (t) { if (t.value !== t.defaultValue) editados[t.getAttribute("data-id")] = t.value; });
+      raiz.innerHTML = html;
+      Object.keys(editados).forEach(function (id) { var t = raiz.querySelector('textarea[data-id="' + CSS.escape(id) + '"]'); if (t) t.value = editados[id]; });
+      var b = raiz.querySelector("[data-titulo]");
+      if (b) { titulo.textContent = b.getAttribute("data-titulo"); document.title = b.getAttribute("data-titulo"); }
+    } catch (e) {
+      if (manual || !raiz.querySelector("[data-titulo]")) mostrar("Sin conexión con la bandeja. Se reintenta cada minuto.", false);
+    }
+  }
+  raiz.addEventListener("click", async function (e) {
+    var b = e.target.closest("button[data-accion]");
+    if (!b || ocupado) return;
+    var card = b.closest("[data-conv]");
+    if (!card) return;
+    var accion = b.getAttribute("data-accion");
+    if (accion === "descartar" && !confirm("¿Descartar esta propuesta? Al cliente no le llega nada.")) return;
+    if (accion === "enviar" && !confirm("¿Enviar estos mensajes al cliente desde tu WhatsApp?")) return;
+    var textos = {};
+    card.querySelectorAll("textarea[data-id]").forEach(function (t) { textos[t.getAttribute("data-id")] = t.value; });
+    ocupado = true;
+    card.querySelectorAll("button").forEach(function (x) { x.disabled = true; });
+    var orig = b.textContent;
+    b.textContent = accion === "enviar" ? "Enviando…" : "Descartando…";
+    var j;
+    try {
+      var r = await fetch(API, { method: "POST", headers: { "content-type": "application/json", "x-bandeja-token": T }, cache: "no-store",
+        body: JSON.stringify({ accion: accion, conversacion_id: card.getAttribute("data-conv"), lote: card.getAttribute("data-lote"), ids: card.getAttribute("data-ids"), textos: textos }) });
+      j = await r.json().catch(function () { return { ok: false, aviso: "Respuesta rara del servidor (" + r.status + ").", recargar: true }; });
+    } catch (err) {
+      j = { ok: false, aviso: "Se perdió la conexión. Revisa la bandeja antes de reintentar (no se manda dos veces).", recargar: true };
+    }
+    ocupado = false;
+    mostrar(j.aviso || (j.ok ? "Listo" : "No se pudo"), !!j.ok);
+    if (!j.recargar) { card.querySelectorAll("button").forEach(function (x) { x.disabled = false; }); b.textContent = orig; return; }
+    if (j.ok) card.querySelectorAll("textarea[data-id]").forEach(function (t) { t.value = t.defaultValue; });
+    await cargar(true);
+  });
+  document.getElementById("act").addEventListener("click", function () { cargar(true); });
+  window.addEventListener("hashchange", function () { leerLlave(); cargar(true); });
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) cargar(false); });
+  setInterval(function () { if (!document.hidden) cargar(false); }, 60000);
+  leerLlave();
+  cargar(true);
+})();
+</script>
+</body>
+</html>
