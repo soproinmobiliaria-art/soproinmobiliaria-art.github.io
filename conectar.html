@@ -15,7 +15,7 @@
 // Parámetros por URL: ?app=<APP_ID>&config=<CONFIG_ID>&negocio=<portafolio>&asesor=<nombre>&tel=<número>
 // Sin parámetros = app "Sopro Ads Manager" 968303299269956 (portafolio Alverto, config 2421259691614047).
 // App "Sopro Bot Ventas" (BM Sopro Terrenos): ?app=1817399609268364&config=1493654976019876&negocio=Sopro%20Terrenos
-// 20-oct-2026: Embedded Signup v4 (v2/v3 y sessionInfoVersion deprecados el 15-oct-2026; en v4 la info de sesión llega siempre).
+// 20-oct-2026: se probó version:'v4' y Meta abrió el flujo NORMAL (número nuevo con SMS), no la coexistencia; por eso se vuelve a la forma documentada para coexistencia (doc embedded-signup/onboarding-business-app-users: featureType whatsapp_business_app_onboarding + sessionInfoVersion 3, sin version).
 const Q=new URLSearchParams(location.search);
 const APP_ID=Q.get('app')||'968303299269956', CONFIG_ID=Q.get('config')||'2421259691614047';
 const NEGOCIO=Q.get('negocio')||'Sopro Inmobiliaria', ASESOR=Q.get('asesor')||'Sebastián', TEL=Q.get('tel')||'663 167 8564';
@@ -27,7 +27,7 @@ window.fbAsyncInit=function(){FB.init({appId:APP_ID,autoLogAppEvents:true,xfbml:
 window.addEventListener('message',(e)=>{if(!/facebook\.com$/.test(e.origin))return;try{const d=JSON.parse(e.data);if(d.type==='WA_EMBEDDED_SIGNUP'){log({evento:d.event,data:d.data,version:d.version});if(d.event==='FINISH'||d.event==='FINISH_ONLY_WABA'||d.event==='FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING')document.getElementById('listo').style.display='block';}}catch(_){}});
 document.getElementById('btn').onclick=function(){
   FB.login(function(r){const code=r.authResponse&&r.authResponse.code||null;log({authResponse:r.authResponse?{code:code?'(código recibido)':null,status:r.status}:null,status:r.status});window.__code=code;if(code){document.body.setAttribute('data-code',code);log('CODE '+code);}},
-  {config_id:CONFIG_ID,response_type:'code',override_default_response_type:true,extras:{setup:{},featureType:'whatsapp_business_app_onboarding',version:'v4'}});
+  {config_id:CONFIG_ID,response_type:'code',override_default_response_type:true,extras:{setup:{},featureType:'whatsapp_business_app_onboarding',sessionInfoVersion:'3'}});
 };
 </script>
 <script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_LA/sdk.js"></script>
