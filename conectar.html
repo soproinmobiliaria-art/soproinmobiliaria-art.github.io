@@ -5,13 +5,23 @@
 <style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0 auto;padding:28px 18px 60px;max-width:720px;color:#1a1a1a;line-height:1.5}h2{margin:0 0 10px}button{font-size:19px;padding:14px 22px;background:#25D366;color:#fff;border:0;border-radius:10px;cursor:pointer;width:100%;max-width:420px}button:disabled{background:#9bd9b2}ol{padding-left:20px}pre{background:#f4f4f4;padding:12px;white-space:pre-wrap;font-size:12px;border-radius:8px}small{color:#666}.ok{background:#e8f7ee;border:1px solid #b7e3c6;border-radius:8px;padding:10px 12px;margin:14px 0;display:none}</style>
 </head><body>
 <h2 id="titulo">Conectar WhatsApp (coexistencia)</h2>
-<p id="instr">Al pulsar el botón se abre la ventana de Meta. Elige el negocio <b id="negocio">Sopro Inmobiliaria</b> y la opción de <b>conectar la app WhatsApp Business que ya usas</b> con el número <b id="tel">663 167 8564</b>. <span id="asesor2">Sebastián</span> recibirá un código en su WhatsApp: hay que teclearlo en la ventana de Meta.</p>
+<p id="instr">Conecta el WhatsApp Business de <b id="asesor2">Sebastián</b> (<b id="tel">663 167 8564</b>) al sistema de <b id="negocio">Sopro Inmobiliaria</b>. Tu WhatsApp sigue funcionando igual en tu teléfono.</p>
+<ol id="pasos">
+<li>Pulsa el botón verde y entra con <b>tu Facebook</b> (el de tu página).</li>
+<li>En la ventana de Meta elige tu cuenta de WhatsApp Business <b>ya registrada</b> con tu número y avanza hasta <b>"Compartir chats"</b>.</li>
+<li>Elige <b>"Usar código de acceso"</b> y cópialo.</li>
+<li>Abre <b>WhatsApp Business</b> → Ajustes → Cuenta → <b>Plataforma de negocios</b> (o en el chat "Facebook Business" toca <b>Conectar</b>) y pega el código. Si estás en una computadora, mejor escanea el QR con el teléfono.</li>
+<li>Vuelve a la ventana de Meta: <b>Confirmar</b> → <b>Finalizar</b>. Esta página avisa sola a Sopro al terminar.</li>
+</ol>
 <button id="btn" disabled>Cargando Meta…</button>
 <div id="listo" class="ok"><b>Listo.</b> Ya puedes cerrar esta página; Sopro termina la conexión del lado del sistema.</div>
+<div id="resultado" class="ok"></div>
 <h3>Registro técnico</h3><pre id="log"></pre>
 <p><small>Sopro Inmobiliaria · Sebastián Campos Rocha · Tecate, B.C. Esta página solo abre la ventana oficial de Meta; no guarda contraseñas ni datos personales.</small></p>
 <script>
 // Página pública (GitHub Pages, https) para el Embedded Signup de coexistencia de WhatsApp. 6-oct-2026.
+// 21-oct-2026 v2: ?clave=<slug wa_asesores> y el `code` se manda solo a la Edge wa-es-code (canje inmediato en el servidor,
+// token al Vault, número → wa_asesores): sirve para que el asesor lo corra desde SU celular sin estar en la oficina.
 // Parámetros por URL: ?app=<APP_ID>&config=<CONFIG_ID>&negocio=<portafolio>&asesor=<nombre>&tel=<número>
 // Sin parámetros = app "Sopro Ads Manager" 968303299269956 (portafolio Alverto, config 2421259691614047).
 // App "Sopro Bot Ventas" (BM Sopro Terrenos): ?app=1817399609268364&config=1493654976019876&negocio=Sopro%20Terrenos
@@ -19,16 +29,27 @@
 const Q=new URLSearchParams(location.search);
 const APP_ID=Q.get('app')||'968303299269956', CONFIG_ID=Q.get('config')||'2421259691614047';
 const NEGOCIO=Q.get('negocio')||'Sopro Inmobiliaria', ASESOR=Q.get('asesor')||'Sebastián', TEL=Q.get('tel')||'663 167 8564';
-const ES_V=(Q.get('v')||'v5');
+const ES_V=(Q.get('v')||'v5'), CLAVE=(Q.get('clave')||'').toLowerCase().replace(/[^a-z0-9_]/g,'');
+const ES_CODE_URL='https://chcljkuxgeqcbyvhjbcg.supabase.co/functions/v1/wa-es-code'; window.__finish=null;
+function resultado(html,ok){const r=document.getElementById('resultado');r.style.display='block';r.style.background=ok?'#e8f7ee':'#fdecec';r.style.borderColor=ok?'#b7e3c6':'#f3b4b4';r.innerHTML=html;}
+async function enviarCode(code){
+  log('enviando el código a Sopro…');
+  try{const r=await fetch(ES_CODE_URL,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({clave:CLAVE,asesor:ASESOR,code:code,data:window.__finish||{}})});
+    const j=await r.json().catch(()=>({}));log({respuesta:r.status,ok:j.ok,asesor:j.asesor,telefono:j.telefono,platform_type:j.platform_type,sin_coincidencia:j.sin_coincidencia,error:j.error,detalle:j.detalle});
+    if(j.ok&&!j.sin_coincidencia){resultado('✅ <b>WhatsApp de '+ASESOR+' conectado a Sopro</b> ('+(j.telefono||'')+'). Ya puedes cerrar esta página.',true);}
+    else if(j.ok){resultado('⚠️ Conectado, pero el número no coincide con el registrado para '+ASESOR+'. Avísale a Sebastián.',false);}
+    else{resultado('❌ No se pudo completar: '+(j.detalle||j.error||('HTTP '+r.status))+'. Manda una captura de esta pantalla a Sebastián.',false);log('CODE '+code);}
+  }catch(e){resultado('❌ Sin conexión con Sopro ('+e+'). Manda una captura de esta pantalla a Sebastián.',false);log('CODE '+code);}
+}
 const EXTRAS = ES_V==='v3' ? {setup:{},featureType:'whatsapp_business_app_onboarding',sessionInfoVersion:'3'} : {version:'v5'};
 document.getElementById('titulo').textContent='Conectar el WhatsApp de '+ASESOR+' (coexistencia)';
 document.getElementById('negocio').textContent=NEGOCIO; document.getElementById('tel').textContent=TEL; document.getElementById('asesor2').textContent=ASESOR;
 const logEl=document.getElementById('log'); window.__es=[];
 function log(x){const s=typeof x==='string'?x:JSON.stringify(x);window.__es.push(s);logEl.textContent+=new Date().toLocaleTimeString()+'  '+s+'\n';}
 window.fbAsyncInit=function(){FB.init({appId:APP_ID,autoLogAppEvents:true,xfbml:true,version:'v25.0'});const b=document.getElementById('btn');b.disabled=false;b.textContent='Conectar WhatsApp de '+ASESOR;log('SDK listo (app '+APP_ID+', config '+CONFIG_ID+', ES '+ES_V+')');};
-window.addEventListener('message',(e)=>{if(!/facebook\.com$/.test(e.origin))return;try{const d=JSON.parse(e.data);if(d.type==='WA_EMBEDDED_SIGNUP'){log({evento:d.event,data:d.data,version:d.version});if(d.event==='FINISH'||d.event==='FINISH_ONLY_WABA'||d.event==='FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING')document.getElementById('listo').style.display='block';}}catch(_){}});
+window.addEventListener('message',(e)=>{if(!/facebook\.com$/.test(e.origin))return;try{const d=JSON.parse(e.data);if(d.type==='WA_EMBEDDED_SIGNUP'){log({evento:d.event,data:d.data,version:d.version});if(d.data&&(d.event==='FINISH'||d.event==='FINISH_ONLY_WABA'||d.event==='FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'))window.__finish=d.data;if(d.event==='FINISH'||d.event==='FINISH_ONLY_WABA'||d.event==='FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING')document.getElementById('listo').style.display='block';}}catch(_){}});
 document.getElementById('btn').onclick=function(){
-  FB.login(function(r){const code=r.authResponse&&r.authResponse.code||null;log({authResponse:r.authResponse?{code:code?'(código recibido)':null,status:r.status}:null,status:r.status});window.__code=code;if(code){document.body.setAttribute('data-code',code);log('CODE '+code);}},
+  FB.login(function(r){const code=r.authResponse&&r.authResponse.code||null;log({authResponse:r.authResponse?{code:code?'(código recibido)':null,status:r.status}:null,status:r.status});window.__code=code;if(code){document.body.setAttribute('data-code',code);enviarCode(code);}else{log('sin código: '+(r.status||'')+' (¿se cerró la ventana antes de Finalizar?)');}},
   {config_id:CONFIG_ID,response_type:'code',override_default_response_type:true,extras:EXTRAS});
 };
 </script>
